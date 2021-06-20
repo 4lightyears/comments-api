@@ -1,8 +1,8 @@
-# from django.urls import path
-#
-# import views
-#
-#
-# urlpatterns = [
-#     path('')
-# ]
+from django.urls import path
+
+from . import views
+
+
+urlpatterns = [
+    path('comments', views.AllCommentsView.as_view()),
+]
