@@ -1,31 +1,19 @@
+from django.http import HttpRequest
 from django.shortcuts import render
 from django.http.response import JsonResponse, HttpResponse
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework.parsers import JSONParser
 from rest_framework import viewsets, status
-from rest_framework.decorators import api_view
 
 from .models import Comment, Reply
 from .serializers import CommentSerializer, ReplySerializer
 
 
-# @api_view(('GET', 'POST'))
-# def comments_list(request):
-#     if request.method == 'GET':
-#         all_comments = Comment.objects.all()
-#         all_replies = Reply.objects.all()
-#
-#         comment_serializer = CommentSerializer(all_comments, many=True)
-#         reply_serializer = ReplySerializer(all_replies, many=True)
-#
-#         comments_data, replies_data = comment_serializer.data, reply_serializer.data
-#
-#
-#         return JsonResponse(comment_serializer.data, safe=False)
-
-class AllCommentsView(View):
-    def get(self, request):
+@csrf_exempt
+def comments_view(request):
+    if request.method == 'GET':
         all_comments = Comment.objects.all()
         all_replies = Reply.objects.all()
 
@@ -48,39 +36,51 @@ class AllCommentsView(View):
                     })
             data['replies'] = replies_list
             final_list.append(data)
-            print(data)
 
         return JsonResponse({"comments": final_list}, safe=False)
 
+    if request.method == 'POST':
+        data = JSONParser().parse(request)
+
+        comment_serializer = CommentSerializer(data=data)
+        if comment_serializer.is_valid():
+            comment_serializer.save()
+            return JsonResponse(comment_serializer.data, status=status.HTTP_201_CREATED)
+        return JsonResponse(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@csrf_exempt
+def comment_view(request, comment_id):
 
+    if request.method == 'GET':
+        comment = Comment.objects.filter(comment_id=comment_id)
+        reply = Reply.objects.all().filter(comment_id_id=comment_id).all()
 
+        serialized_comment = CommentSerializer(comment, many=True)
+        serialized_reply = ReplySerializer(reply, many=True)
 
+        replies_list = []
+        for i in serialized_reply.data:
+            data = {
+                'reply_id': i['reply_id'],
+                'description': i['description']
+            }
 
+            replies_list.append(data)
+        try:
+            serialized_comment.data[0]['replies'] = replies_list
+        except:
+            return JsonResponse({'message': 'not found.'}, status=status.HTTP_404_NOT_FOUND)
+        return JsonResponse({'comment': serialized_comment.data}, safe=False)
 
+    if request.method == 'PUT':
+        data = JSONParser().parse(request)
+        comment_serializer = CommentSerializer(data=data)
+        if comment_serializer.is_valid():
+            Comment.objects.filter(comment_id=comment_id).update(description=data['description'])
+            return JsonResponse(comment_serializer.data, status=status.HTTP_202_ACCEPTED)
+        return JsonResponse(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
-
-
-
-
-
-
-
-
-
-
-
-# class CommentView(View):
-#     def get(self, request, comment_id):
-#         pass
-#
-#     def post(self, request):
-#         pass
-#
-#     def put(self, request):
-#         pass
-#
-#     def delete(self, request):
-#         pass
+    if request.method == 'DELETE':
+        Comment.objects.filter(comment_id=comment_id).delete()
+        return JsonResponse({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
