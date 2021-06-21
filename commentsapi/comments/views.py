@@ -110,3 +110,7 @@ def modify_reply_view(request, reply_id):
             Reply.objects.filter(reply_id=reply_id).update(description=data['description'])
             return JsonResponse(reply_serializer.data, status=status.HTTP_202_ACCEPTED)
         return JsonResponse(reply_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    if request.method == 'DELETE':
+        Reply.objects.filter(reply_id=reply_id).delete()
+        return JsonResponse({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
