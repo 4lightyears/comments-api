@@ -34,7 +34,42 @@ class AllCommentsView(View):
 
         comments_data, replies_data = comment_serializer.data, reply_serializer.data
 
-        return JsonResponse(comments_data, safe=False)
+        final_list = []
+        for i in comments_data:
+            data = {}
+            replies_list = []
+            data['comment_id'] = i['comment_id']
+            data['description'] = i['description']
+            for j in replies_data:
+                if i['comment_id'] == j['comment_id_id']:
+                    replies_list.append({
+                        'reply_id': j['reply_id'],
+                        'description': j['description']
+                    })
+            data['replies'] = replies_list
+            final_list.append(data)
+            print(data)
+
+        return JsonResponse({"comments": final_list}, safe=False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # class CommentView(View):
