@@ -1,7 +1,6 @@
-from django.http import HttpRequest
-from django.shortcuts import render
+from sqlite3 import IntegrityError
+
 from django.http.response import JsonResponse, HttpResponse
-from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework.parsers import JSONParser
@@ -84,3 +83,30 @@ def comment_view(request, comment_id):
     if request.method == 'DELETE':
         Comment.objects.filter(comment_id=comment_id).delete()
         return JsonResponse({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
+
+
+@csrf_exempt
+def create_reply_view(request):
+
+    if request.method == 'POST':
+        data = JSONParser().parse(request)
+        print(data)
+        reply_serializer = ReplySerializer(data=data)
+        if reply_serializer.is_valid():
+            try:
+                reply_serializer.create(data)
+            except IntegrityError as e:
+                return 'error'
+            return JsonResponse(reply_serializer.data, status=status.HTTP_201_CREATED)
+        return JsonResponse(reply_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@csrf_exempt
+def modify_reply_view(request, reply_id):
+
+    if request.method == 'PUT':
+        data = JSONParser().parse(request)
+        reply_serializer = ReplySerializer(data=data)
+        if reply_serializer.is_valid():
+            Reply.objects.filter(reply_id=reply_id).update(description=data['description'])
+            return JsonResponse(reply_serializer.data, status=status.HTTP_202_ACCEPTED)
+        return JsonResponse(reply_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
