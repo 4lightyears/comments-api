@@ -5,14 +5,18 @@ from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework.parsers import JSONParser
 from rest_framework import status
+from rest_framework.views import APIView
 
 from .models import Comment, Reply
 from .serializers import CommentSerializer, ReplySerializer
 
 
-@csrf_exempt
-def comments_view(request):
-    if request.method == 'GET':
+class AllComments(APIView):
+    """
+    List all comments or create a new comment. 
+    """
+
+    def get(self, request):
         all_comments = Comment.objects.all()
         all_replies = Reply.objects.all()
 
@@ -28,7 +32,7 @@ def comments_view(request):
             data['comment_id'] = i['comment_id']
             data['description'] = i['description']
             for j in replies_data:
-                if i['comment_id'] == j['comment_id_id']:
+                if i['comment_id'] == j['comment_id']:
                     replies_list.append({
                         'reply_id': j['reply_id'],
                         'description': j['description']
@@ -38,7 +42,7 @@ def comments_view(request):
 
         return JsonResponse({"comments": final_list}, safe=False)
 
-    if request.method == 'POST':
+    def post(self, request):
         try:
             data = JSONParser().parse(request)
         except:
@@ -55,20 +59,23 @@ def comments_view(request):
         return JsonResponse(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-@csrf_exempt
-def comment_view(request, comment_id):
+class CommentDetail(APIView):
+    """
+    View, update or delete a comment using the comment id.
+    """
 
-    try:
-        data = Comment.objects.get(comment_id=comment_id)
-    except:
-        return JsonResponse({'message': 'Comment does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+    def get(self, request, comment_id):
+        try:
+            data = Comment.objects.get(comment_id=comment_id)
+        except:
+            JsonResponse({'message': 'Comment does not exist.'},
+                         status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'GET':
         try:
             comment = Comment.objects.filter(comment_id=comment_id)
         except ValueError as ve:
             return JsonResponse({'message': 'Improper value for comment_id'}, status=status.HTTP_400_BAD_REQUEST)
-        reply = Reply.objects.all().filter(comment_id_id=comment_id).all()
+        reply = Reply.objects.all().filter(comment_id=comment_id).all()
 
         serialized_comment = CommentSerializer(comment, many=True)
         serialized_reply = ReplySerializer(reply, many=True)
@@ -87,57 +94,78 @@ def comment_view(request, comment_id):
             return JsonResponse({'message': 'not found.'}, status=status.HTTP_404_NOT_FOUND)
         return JsonResponse({'comment': serialized_comment.data}, safe=False)
 
-    if request.method == 'PUT':
+    def put(self, request, comment_id):
+        try:
+            data = Comment.objects.get(comment_id=comment_id)
+        except:
+            JsonResponse({'message': 'Comment does not exist.'},
+                         status=status.HTTP_404_NOT_FOUND)
+
         try:
             data = JSONParser().parse(request)
         except:
             return JsonResponse({'message': 'improper foramtting for json body in request.'}, status=status.HTTP_400_BAD_REQUEST)
         comment_serializer = CommentSerializer(data=data)
         if comment_serializer.is_valid():
-            Comment.objects.filter(comment_id=comment_id).update(description=data['description'])
+            Comment.objects.filter(comment_id=comment_id).update(
+                description=data['description'])
             return JsonResponse(comment_serializer.data, status=status.HTTP_202_ACCEPTED)
         return JsonResponse(comment_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'DELETE':
+    def delete(self, request, comment_id):
+        try:
+            data = Comment.objects.get(comment_id=comment_id)
+        except:
+            JsonResponse({'message': 'Comment does not exist.'},
+                         status=status.HTTP_404_NOT_FOUND)
+
         Comment.objects.filter(comment_id=comment_id).delete()
         return JsonResponse({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
 
 
-@csrf_exempt
-def create_reply_view(request):
+class CreateReply(APIView):
+    """
+    Create a reply for a comment using its comment id.
+    """
 
-
-    if request.method == 'POST':
+    def post(self, request):
         data = JSONParser().parse(request)
-        print(data)
         reply_serializer = ReplySerializer(data=data)
         if reply_serializer.is_valid():
             try:
                 reply_serializer.create(data)
             except:
-                return JsonResponse({'message': ''}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                return JsonResponse({'message': 'Comment does not exist for this reply.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
             return JsonResponse(reply_serializer.data, status=status.HTTP_201_CREATED)
         return JsonResponse(reply_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-@csrf_exempt
-def modify_reply_view(request, reply_id):
 
-    try:
-        data = Reply.objects.get(reply_id=reply_id)
-    except:
-        return JsonResponse({'message': 'Reply does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+class ReplyDetail(APIView):
+    """
+    Update or delete a reply using the reply id.
+    """
+    def put(self, request, reply_id):
+        try:
+            data = Reply.objects.get(reply_id=reply_id)
+        except:
+            return JsonResponse({'message': 'Reply does not exist.'}, status=status.HTTP_404_NOT_FOUND)
 
-    if request.method == 'PUT':
         try:
             data = JSONParser().parse(request)
         except:
             return JsonResponse({'message': 'improper foramtting for json body in request.'})
         reply_serializer = ReplySerializer(data=data)
         if reply_serializer.is_valid():
-            Reply.objects.filter(reply_id=reply_id).update(description=data['description'])
+            Reply.objects.filter(reply_id=reply_id).update(
+                description=data['description'])
             return JsonResponse(reply_serializer.data, status=status.HTTP_202_ACCEPTED)
         return JsonResponse(reply_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'DELETE':
+    def delete(self, request, reply_id):
+        try:
+            data = Reply.objects.get(reply_id=reply_id)
+        except:
+            return JsonResponse({'message': 'Reply does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+
         Reply.objects.filter(reply_id=reply_id).delete()
         return JsonResponse({'message': 'Deleted'}, status=status.HTTP_204_NO_CONTENT)
