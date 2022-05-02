@@ -1,11 +1,11 @@
 from django.urls import path
 
-from . import views
+from .views import AllComments, CommentDetail, ReplyDetail, CreateReply
 
 
 urlpatterns = [
-    path('comments', views.comments_view),
-    path('comment/<int:comment_id>', views.comment_view),
-    path('comment/reply', views.create_reply_view),
-    path('comment/reply/<int:reply_id>', views.modify_reply_view),
+    path('comments', AllComments.as_view()),
+    path('comment/<int:comment_id>', CommentDetail.as_view()),
+    path('comment/reply', CreateReply.as_view()),
+    path('comment/reply/<int:reply_id>', ReplyDetail.as_view()),
 ]
