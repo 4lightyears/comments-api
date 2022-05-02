@@ -10,6 +10,7 @@ class CommentSerializer(serializers.ModelSerializer):
             'comment_id', 'description', 'created_at', 'updated_at'
         )
 
+
 class ReplySerializer(serializers.ModelSerializer):
     class Meta:
         model = Reply
